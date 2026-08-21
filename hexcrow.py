@@ -10,6 +10,9 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import banner
+
 for stream in (sys.stdout, sys.stderr):
     if stream and hasattr(stream, 'reconfigure'):
         try:
@@ -68,17 +71,16 @@ def badge(text, bg='bg_green'):
     return C[bg] + C['black'] + C['bold'] + ' ' + text + ' ' + C['reset']
 
 
-BANNER = '\n'.join([
-    color('blue', r' _   _  _____ __  __   ____  ____   ___ __        __'),
-    color('cyan', r'| | | | | ____| \ \/ /  / ___| |  _ \  / _ \ \ \      / /'),
-    color('magenta', r'| |_| | |  _|   \  /  | |    | |_) | | | | |  \ \ /\ / /'),
-    color('blue', r'|  _  | | |___   /  \  | |___ |  _ <  | |_| |   \ V  V /'),
-    color('cyan', r'|_| |_| |_____| /_/\_\  \____| |_| \_\  \___/    \_/\_/'),
-    '',
-    color('magenta', '             \u2550\u2550\u2550\u2550\u2550\u2550\u2550 Modern Admin Panel Hunter \u2550\u2550\u2550\u2550\u2550\u2550\u2550'),
-    color('gray', '               Made with ') + color('red', '<3') + color('gray', ' By Kishwordulal  \u00b7  hexcrow v2'),
-    color('gray', '               github.com/') + color('cyan', 'kishwordulal2005'),
-])
+def build_banner():
+    banners = getattr(banner, 'BANNERS', None)
+    if banners:
+        return random.choice(banners)
+    if hasattr(banner, 'get_banner'):
+        return banner.get_banner()
+    return ''
+
+
+BANNER = build_banner()
 
 TITLE_RE = re.compile(r'<title[^>]*>(.*?)</title>', re.I | re.S)
 PASSWORD_RE = re.compile(r'type=["\']?password', re.I)
