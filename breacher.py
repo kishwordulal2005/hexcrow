@@ -175,6 +175,7 @@ state = {
     'stop': False,
     'lock': threading.Lock(),
     'denied': {},
+    'throttle': 0.0,
     'out': None,
     'out_lock': threading.Lock(),
     'dirs': [],
@@ -428,14 +429,26 @@ def report(res, args, total):
         progress(total)
 
 
+def adaptive_wait(args):
+    time.sleep(args.delay + state['throttle'])
+
+
+def throttle_update(status):
+    with state['lock']:
+        if status == 429:
+            state['throttle'] = min(state['throttle'] + 0.5, 8.0)
+        elif state['throttle'] > 0:
+            state['throttle'] = max(0.0, state['throttle'] - 0.01)
+
+
 def worker(path, session, args, baseline, total):
     if state['stop']:
         return
     try:
-        if args.delay:
-            time.sleep(args.delay)
+        adaptive_wait(args)
         r = session.get(base + path, timeout=args.timeout, allow_redirects=args.follow,
                         headers=rand_headers())
+        throttle_update(r.status_code)
         report(analyze(path, r, baseline, args.follow), args, total)
     except requests.exceptions.RequestException:
         report(None, args, total)
@@ -603,10 +616,10 @@ def recursive_scan(seed_paths, session, args, baseline, wordlist):
             if state['stop']:
                 return
             try:
-                if args.delay:
-                    time.sleep(args.delay)
+                adaptive_wait(args)
                 r = session.get(base + path, timeout=args.timeout, allow_redirects=args.follow,
                                 headers=rand_headers())
+                throttle_update(r.status_code)
                 res = analyze(path, r, baseline, args.follow)
                 if res['score'] >= 5 or (res['status'] < 400 and not res['fp']):
                     with captured['lock']:
@@ -665,9 +678,9 @@ def main():
     ap = argparse.ArgumentParser(description='hexcrow - modern admin panel hunter')
     ap.add_argument('-u', '--url', dest='target', help='target url, e.g. https://example.com')
     ap.add_argument('-w', '--wordlist', dest='wordlist', default='paths.txt')
-    ap.add_argument('-t', '--threads', dest='threads', type=int, default=10)
-    ap.add_argument('--delay', dest='delay', type=float, default=0.0,
-                    help='delay in seconds between requests per thread (default 0)')
+    ap.add_argument('-t', '--threads', dest='threads', type=int, default=5)
+    ap.add_argument('--delay', dest='delay', type=float, default=0.25,
+                    help='delay in seconds between requests per thread (default 0.25)')
     ap.add_argument('-p', '--prefix', dest='prefix', help='custom path prefix added after the domain')
     ap.add_argument('--timeout', dest='timeout', type=float, default=10.0)
     ap.add_argument('--retries', dest='retries', type=int, default=2)
@@ -708,7 +721,7 @@ def main():
             if not args.target:
                 print(color('red', '[!]') + ' no target given')
                 sys.exit(1)
-            t = input(color('cyan', 'threads') + color('gray', ' [10]') + ': ').strip()
+            t = input(color('cyan', 'threads') + color('gray', ' [5]') + ': ').strip()
             if t.isdigit():
                 args.threads = int(t)
             to = input(color('cyan', 'timeout (seconds)') + color('gray', ' [10]') + ': ').strip()
