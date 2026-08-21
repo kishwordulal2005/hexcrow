@@ -11,7 +11,10 @@ Made with <3 by **Kishwordulal** — [github.com/kishwordulal2005](https://githu
 
 ## Features
 
-- 10 threads by default (configurable) with `ThreadPoolExecutor`
+- 5 threads by default (configurable) with `ThreadPoolExecutor`
+- Polite rate limiting: 0.25s delay per thread + adaptive backoff when the
+  server responds with 429 (Too Many Requests) — automatically slows down
+  up to 8s between requests, then eases back off
 - Colorful live progress bar (progress %, found, panels, req/s)
 - Admin panel detection with scoring + hard indicators
   (password fields, login forms, http-auth, CMS fingerprints)
@@ -56,7 +59,7 @@ It will ask for:
 
 ```
 target url [e.g. https://example.com]:
-threads [10]:
+threads [5]:
 timeout (seconds) [10]:
 recursive scan [y/N]:
 wordlist [1]:            <- numbered list of *.txt files in the current dir
@@ -85,8 +88,8 @@ to download the bigger online dictionary:
 |---|---|
 | `-u, --url URL` | target url, e.g. `https://example.com` |
 | `-w, --wordlist FILE` | wordlist file (default `paths.txt`) |
-| `-t, --threads N` | number of threads (default 10) |
-| `--delay SEC` | delay between requests per thread (default 0) |
+| `-t, --threads N` | number of threads (default 5) |
+| `--delay SEC` | delay between requests per thread (default 0.25) |
 | `-p, --prefix PATH` | path prefix added after the domain |
 | `--timeout SEC` | request timeout in seconds (default 10) |
 | `--retries N` | retries on failure (default 2) |
@@ -114,8 +117,8 @@ python breacher.py -u https://example.com
 # aggressive scan with recursion and more threads
 python breacher.py -u https://example.com -t 50 -r --depth 3
 
-# slow, stealthy scan (5 threads, 0.5s delay per request)
-python breacher.py -u https://example.com -t 5 --delay 0.5
+# slow, stealthy scan (2 threads, 1s delay per request)
+python breacher.py -u https://example.com -t 2 --delay 1
 
 # scan with a custom wordlist and only show interesting statuses
 python breacher.py -u https://example.com -w dicc.txt --show 200,301,403
